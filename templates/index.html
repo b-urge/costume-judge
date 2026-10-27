@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Costume Judge :: Halloween Headquarters</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Creepster&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <main class="geocities-page">
+    <header class="site-header">
+      <div class="top-gifs" aria-hidden="true">
+        <img src="/static/gifs/flying-bat.gif" alt="">
+        <img src="/static/gifs/spinning-skull.gif" alt="">
+        <img src="/static/gifs/flying-bat.gif" alt="">
+      </div>
+      <marquee class="welcome" behavior="scroll" direction="left">~~ WeLcOmE 2 tHe CoStUmE JuDgE ~~</marquee>
+      <h1>Costume Judge</h1>
+      <p class="tagline">★ The internet's most terrifyingly honest fashion authority ★</p>
+      <div class="construction" role="status"><span>⚠</span> UNDER CONSTRUCTION <span>⚠</span></div>
+    </header>
+
+    <div class="slime-divider" aria-hidden="true"></div>
+
+    <section class="judge-zone" aria-labelledby="camera-heading">
+      <div class="flame-column" aria-hidden="true"><img src="/static/gifs/flickering-flames.gif" alt=""></div>
+      <div class="camera-panel">
+        <h2 id="camera-heading">Present Thy Costume!</h2>
+        <div id="camera">
+          <video id="video" autoplay playsinline></video>
+          <canvas id="canvas" hidden></canvas>
+        </div>
+        <button id="judge" type="button">✦ JUDGE MY COSTUME! ✦</button>
+        <p class="hint">Give the oracle a clear look at your whole outfit.</p>
+      </div>
+      <div class="flame-column" aria-hidden="true"><img src="/static/gifs/flickering-flames.gif" alt=""></div>
+    </section>
+
+    <section id="result" aria-live="polite"></section>
+
+    <div class="rainbow-divider" aria-hidden="true"></div>
+
+    <section class="community-zone">
+      <img class="dancing-skeleton" src="/static/gifs/dancing-skeleton.gif" alt="A dancing pixel skeleton">
+      <div class="counter-box" aria-label="Visitor count">
+        <span>YOU ARE VISITOR</span>
+        <strong id="hit-counter">0000666</strong>
+        <span>TO BE JUDGED!</span>
+      </div>
+      <nav class="site-links" aria-label="Site links">
+        <a href="#guestbook">✎ Sign my guestbook</a>
+        <a href="#webring">Haunted Web Ring: « prev | random | next »</a>
+      </nav>
+      <img class="dancing-skeleton" src="/static/gifs/dancing-skeleton.gif" alt="A dancing pixel skeleton">
+    </section>
+
+    <footer>
+      <div class="netscape-badge">Best viewed in<br><b>Netscape Navigator 4.0</b></div>
+      <p id="guestbook">© 1998–FOREVER Costume Judge Enterprises · No boring outfits allowed!</p>
+      <p id="webring" class="web-ring">Haunted Web Ring: « prev | random | next »</p>
+    </footer>
+  </main>
+  <script src="/static/main.js"></script>
+</body>
+</html>
