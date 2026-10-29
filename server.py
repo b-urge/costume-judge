@@ -9,6 +9,7 @@ Uses only Python standard library.
 import base64
 import http.server
 import socketserver
+import urllib.error
 import urllib.request
 import json
 import os
@@ -99,7 +100,70 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps(result).encode())
             return
+        elif self.path == '/speak':
+            # ElevenLabs TTS: expects JSON {"text": "..."}, returns MP3 or error.
+            length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(length)
+            try:
+                data = json.loads(body)
+                text = data.get('text')
+            except Exception:
+                self.send_error(HTTPStatus.BAD_REQUEST, 'Invalid JSON')
+                return
+            ELEVEN_KEY = ENV.get('ELEVENLABS_API_KEY')
+            if not ELEVEN_KEY:
+                self.send_response(HTTPStatus.BAD_REQUEST)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': 'No ELEVENLABS_API_KEY set'}).encode())
+                return
+            try:
+                mp3bytes = elevenlabs_speak(text, ELEVEN_KEY)
+                self.send_response(HTTPStatus.OK)
+                self.send_header('Content-Type', 'audio/mpeg')
+                self.end_headers()
+                self.wfile.write(mp3bytes)
+            except Exception as e:
+                # Never print/log keys!
+                self.send_response(HTTPStatus.BAD_REQUEST)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': str(e)}).encode())
+            return
         self.send_error(HTTPStatus.NOT_FOUND)
+
+def elevenlabs_speak(text, api_key):
+    text = text.strip()
+    if not text:
+        raise ValueError('No text to speak')
+    import urllib.request
+    voice_id = 'CwhRBWXzGAHq8TQ4Fs17'  # ElevenLabs premade "Roger" -- dramatic, clear
+    url = f'https://api.elevenlabs.io/v1/text-to-speech/{voice_id}'
+    data = json.dumps({
+        'text': text,
+        'model_id': 'eleven_multilingual_v2',
+        'voice_settings': {'stability': 0.46, 'similarity_boost': 0.45}
+    }).encode('utf-8')
+    req = urllib.request.Request(url, data=data, method='POST', headers={
+        'xi-api-key': api_key,
+        'Content-Type': 'application/json',
+        'Accept': 'audio/mpeg'
+    })
+    try:
+        with urllib.request.urlopen(req, timeout=40) as resp:
+            if resp.status != 200:
+                raise RuntimeError(f'ElevenLabs error HTTP {resp.status}')
+            return resp.read()
+    except urllib.error.HTTPError as error:
+        detail = error.read().decode('utf-8', errors='replace').strip()
+        try:
+            detail = json.loads(detail).get('detail', detail)
+            if isinstance(detail, dict):
+                detail = detail.get('message', json.dumps(detail))
+        except (TypeError, ValueError):
+            pass
+        raise RuntimeError(f'ElevenLabs error HTTP {error.code}: {detail}') from error
+
 
 
 def call_gemini(image_bytes):
