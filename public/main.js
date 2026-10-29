@@ -217,7 +217,13 @@
 
     const fd = new FormData();
     fd.append('photo', blob, 'photo.jpg');
-    resultDiv.textContent = 'Consulting the haunted fashion oracle...';
+    const waitingText = 'Consulting the haunted fashion oracle...';
+    resultDiv.innerHTML = `
+      <section class="loading-card" aria-live="polite">
+        <div class="loading-spinner" aria-hidden="true"></div>
+        <p class="loading-text">${escapeHtml(waitingText)}</p>
+      </section>
+    `;
     try{
       const resp = await fetch('/api/judge', {method:'POST', headers: apiHeaders(), body:fd});
       if(resp.status === 401 || resp.status === 403){
