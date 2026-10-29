@@ -67,10 +67,10 @@ body {
 }
 
 /* Attached header (transparent background) tweaks */
-.header-attached { display: block; width: min(680px, 92vw); height: auto; }
+.header-attached { display: block; width: min(860px, 98vw); height: auto; }
 
 @media (max-width: 600px) {
-  .header-attached { width: min(320px, 80vw); }
+  .header-attached { width: min(420px, 90vw); }
 }
 
 .skull-trumpet {
