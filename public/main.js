@@ -5,6 +5,10 @@
   const resultDiv = document.getElementById('result');
   const fileInput = document.getElementById('file-input');
   const counter = document.getElementById('hit-counter');
+
+  const EVENT_CODE_KEY = 'costumeJudgeEventCode';
+  const MAX_IMAGE_DIMENSION = 1024;
+
   let hits = Number(localStorage.getItem('costumeJudgeHits') || 666);
   let audioElem = null;
   let muteBtn = null;
@@ -12,6 +16,7 @@
   let lastRoast = null;
   let lastMP3 = null;
   let usedBrowserSpeak = false;
+  let eventCodeRequired = false;
 
   function renderCounter(){
     if(counter) counter.textContent = String(hits).padStart(7, '0');
@@ -26,9 +31,44 @@
       const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'}, audio:false});
       video.srcObject = stream;
       await video.play();
-    }catch(e){
+    }catch(_e){
       resultDiv.innerHTML = '<p class="error-message">Camera access is required to judge your costume. You can also upload a photo below.</p>';
     }
+  }
+
+  function getEventCode(){
+    return localStorage.getItem(EVENT_CODE_KEY) || '';
+  }
+
+  async function fetchEventCodeRequirement(){
+    try {
+      const resp = await fetch('/api/config');
+      if(!resp.ok) return;
+      const data = await resp.json();
+      eventCodeRequired = !!data.event_code_required;
+    } catch(_e){
+      eventCodeRequired = false;
+    }
+  }
+
+  async function ensureEventCode(){
+    if(!eventCodeRequired) return true;
+    if(getEventCode()) return true;
+    const entered = window.prompt('Enter event passcode to continue:');
+    if(!entered || !entered.trim()) return false;
+    localStorage.setItem(EVENT_CODE_KEY, entered.trim());
+    return true;
+  }
+
+  function apiHeaders(base){
+    const headers = base || {};
+    const code = getEventCode();
+    if(code) headers['x-event-code'] = code;
+    return headers;
+  }
+
+  function clearEventCode(){
+    localStorage.removeItem(EVENT_CODE_KEY);
   }
 
   function showResult(json){
@@ -66,7 +106,6 @@
     if(muteBtn) { muteBtn.remove(); muteBtn = null; }
     if(!text || typeof text !== 'string') return;
     if(lastMP3 && isReplay) {
-      // Replay cached mp3
       audioElem = document.createElement('audio');
       audioElem.src = URL.createObjectURL(lastMP3);
       audioElem.autoplay = true;
@@ -76,10 +115,22 @@
       attachMuteBtn();
       return;
     }
+
+    if(!(await ensureEventCode())) return;
+
     lastMP3 = null;
     try {
-      const resp = await fetch('/speak', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({text})});
-      if(resp.ok && resp.headers.get('Content-Type') === 'audio/mpeg'){
+      const resp = await fetch('/api/speak', {
+        method: 'POST',
+        headers: apiHeaders({'Content-Type': 'application/json'}),
+        body: JSON.stringify({text})
+      });
+      if(resp.status === 401 || resp.status === 403){
+        clearEventCode();
+        if(await ensureEventCode()) return playRoast(text, isReplay);
+        return;
+      }
+      if(resp.ok && (resp.headers.get('Content-Type') || '').includes('audio/mpeg')){
         const blob = await resp.blob();
         lastMP3 = blob;
         audioElem = document.createElement('audio');
@@ -93,7 +144,7 @@
         usedBrowserSpeak = true;
         browserSpeak(text);
       }
-    }catch(e){
+    }catch(_e){
       usedBrowserSpeak = true;
       browserSpeak(text);
     }
@@ -129,13 +180,12 @@
   }
 
   function browserSpeak(text){
-    if(typeof window.speechSynthesis !== "undefined"){
+    if(typeof window.speechSynthesis !== 'undefined'){
       window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
       u.rate = 1.05;
       u.pitch = 1.0;
       u.volume = 1;
-      // Pick a more dramatic voice if available
       const voices = window.speechSynthesis.getVoices();
       for(const v of voices){
         if(/fem|dramatic|emma|google|voice|en/i.test(v.name)) { u.voice = v; break; }
@@ -144,12 +194,37 @@
     }
   }
 
+  function resizedJpegBlobFromSource(sourceCanvas, quality){
+    return new Promise((resolve) => {
+      const width = sourceCanvas.width;
+      const height = sourceCanvas.height;
+      const longest = Math.max(width, height);
+      const scale = longest > MAX_IMAGE_DIMENSION ? (MAX_IMAGE_DIMENSION / longest) : 1;
+      const out = document.createElement('canvas');
+      out.width = Math.max(1, Math.round(width * scale));
+      out.height = Math.max(1, Math.round(height * scale));
+      const outCtx = out.getContext('2d');
+      outCtx.drawImage(sourceCanvas, 0, 0, out.width, out.height);
+      out.toBlob((blob) => resolve(blob), 'image/jpeg', quality);
+    });
+  }
+
   async function uploadBlob(blob){
+    if(!(await ensureEventCode())){
+      resultDiv.innerHTML = '<p class="error-message">Passcode required.</p>';
+      return;
+    }
+
     const fd = new FormData();
-    fd.append('photo', blob, 'photo.png');
+    fd.append('photo', blob, 'photo.jpg');
     resultDiv.textContent = 'Consulting the haunted fashion oracle...';
     try{
-      const resp = await fetch('/upload',{method:'POST',body:fd});
+      const resp = await fetch('/api/judge', {method:'POST', headers: apiHeaders(), body:fd});
+      if(resp.status === 401 || resp.status === 403){
+        clearEventCode();
+        if(await ensureEventCode()) return uploadBlob(blob);
+        throw new Error('Passcode required');
+      }
       if(!resp.ok) throw new Error('Upload failed');
       const j = await resp.json();
       if(j.message) throw new Error(j.message);
@@ -157,9 +232,8 @@
       hits += 1;
       localStorage.setItem('costumeJudgeHits', String(hits));
       renderCounter();
-    }catch(e){
-      // Friendly fallback message
-      resultDiv.innerHTML = `<p class="error-message">The spirits are busy, try again in a moment</p>`;
+    }catch(_e){
+      resultDiv.innerHTML = '<p class="error-message">The spirits are busy, try again in a moment</p>';
     }
   }
 
@@ -172,16 +246,14 @@
     canvas.height = video.videoHeight;
     const ctx = canvas.getContext('2d');
     ctx.drawImage(video,0,0);
-    canvas.toBlob(async (blob)=>{
-      if(!blob){
-        resultDiv.innerHTML = '<p class="error-message">Could not capture the costume photo. Try again.</p>';
-        return;
-      }
-      await uploadBlob(blob);
-    }, 'image/png');
+    const blob = await resizedJpegBlobFromSource(canvas, 0.86);
+    if(!blob){
+      resultDiv.innerHTML = '<p class="error-message">Could not capture the costume photo. Try again.</p>';
+      return;
+    }
+    await uploadBlob(blob);
   });
 
-  // File input fallback
   if(fileInput){
     fileInput.addEventListener('change', ()=>{
       const f = fileInput.files && fileInput.files[0];
@@ -189,15 +261,17 @@
       const reader = new FileReader();
       reader.onload = function(){
         const img = new Image();
-        img.onload = function(){
+        img.onload = async function(){
           canvas.width = img.naturalWidth;
           canvas.height = img.naturalHeight;
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img,0,0);
-          canvas.toBlob(async (blob)=>{
-            if(!blob){ resultDiv.innerHTML = '<p class="error-message">Could not read the image. Try another file.</p>'; return; }
-            await uploadBlob(blob);
-          }, 'image/png');
+          const blob = await resizedJpegBlobFromSource(canvas, 0.86);
+          if(!blob){
+            resultDiv.innerHTML = '<p class="error-message">Could not read the image. Try another file.</p>';
+            return;
+          }
+          await uploadBlob(blob);
         };
         img.src = reader.result;
       };
@@ -205,6 +279,10 @@
     });
   }
 
-  renderCounter();
-  startCamera();
+  (async ()=>{
+    renderCounter();
+    await fetchEventCodeRequirement();
+    await ensureEventCode();
+    startCamera();
+  })();
 })();

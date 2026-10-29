@@ -13,7 +13,7 @@ body {
   min-width: 320px;
   color: #fff;
   font-family: "Comic Sans MS", "Comic Sans", cursive;
-  background-image: url('/static/gifs/tumblr_781a67b54e8d09e71842ad09405d3bfb_c89c8aa9_250.gif');
+  background-image: url('/gifs/tumblr_781a67b54e8d09e71842ad09405d3bfb_c89c8aa9_250.gif');
   background-repeat: repeat;
   background-color: #000;
 }
