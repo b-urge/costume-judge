@@ -70,7 +70,9 @@ body {
 .header-attached { display: block; width: min(1200px, 100vw); height: auto; transform: scale(1.15); }
 
 @media (max-width: 600px) {
-  .header-attached { width: 100vw; transform: scale(1.1); margin: 0 -10px; }
+  .header-attached { width: 100vw; max-width: 100%; transform: scale(1.05); margin: 0 auto; display: block; }
+  .header-banner-container { justify-content: center; align-items: center; }
+  .skull-trumpet { width: 48px; }
 }
 
 .skull-trumpet {
