@@ -66,6 +66,13 @@ body {
   filter: drop-shadow(0 0 15px rgba(124, 255, 0, 0.4));
 }
 
+/* Attached header (transparent background) tweaks */
+.header-attached { display: block; width: min(680px, 92vw); height: auto; }
+
+@media (max-width: 600px) {
+  .header-attached { width: min(320px, 80vw); }
+}
+
 .skull-trumpet {
   width: 190px;
   height: auto;
