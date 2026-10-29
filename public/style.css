@@ -237,11 +237,19 @@ h2 {
   margin-top: 10px;
 }
 
-@media (max-width: 650px) {
-  .header-banner-container { flex-direction: column; gap: 10px; }
-  .skull-trumpet { width: 110px; }
+@media (max-width: 600px) {
+  /* Keep skeletons on either side of the title in a single row on mobile */
+  .header-banner-container { flex-direction: row; gap: 12px; align-items: center; justify-content: center; flex-wrap: nowrap; }
+  .skull-trumpet { width: 48px; height: auto; flex: 0 0 auto; }
+  .title-logo { flex: 1 1 auto; min-width: 0; }
+  .logo-img { width: 100%; max-width: 240px; height: auto; object-fit: contain; }
   .skull-left { transform: scaleX(-1); }
   .book { width: calc(100% - 16px); padding-top: 18px; }
   .skull { display: none; }
   #judge { font-size: 1.35rem; }
+}
+
+/* Ensure Comic Neue is used as a fallback where Comic Sans was expected */
+:root, body, .book, .cover, .title-logo, h1, h2, .scorecard, .file-label, #judge {
+  font-family: "Comic Sans MS", "Comic Neue", cursive;
 }
